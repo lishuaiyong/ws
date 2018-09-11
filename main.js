@@ -1518,7 +1518,7 @@
           <option value="已开启">已开启</option>
           </select>
           </span>
-          <span><label for="auto_idle">空闲时： </label><select  style='width:80px' id = "ks_Boss">
+          <span><label for="auto_idle">空闲时： </label><select  style='width:80px' id = "auto_idle">
           <option value="1">挖矿</option>
           <option value="2">练功</option>
           </select>
@@ -1527,7 +1527,6 @@
           <option value="已停止">已停止</option>
           <option value="已开启">已开启</option>
           </select>
-          </span>
           </span>
           <span><label for="auto_eq">BOSS击杀时自动换装： </label><select style='width:80px' id = "auto_eq">
           <option value="999">已停止</option>
@@ -1827,7 +1826,7 @@
           }
         }
       })
-      
+
       var autoIdle = GM_getValue(role + '_autoIdle', autoIdle)
       if (autoIdle == 1) { 
         setTimeout(() => {
