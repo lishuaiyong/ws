@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         wsmud_tim
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @date         01/09/2018
 // @modified     5/09/2018
 // @description  武神传说 MUD (Tim Li)
@@ -15,7 +15,8 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // ==/UserScript==
-// 2018年9月5 武道塔增加等技能CD的功能
+// 2018年9月11日 增加反击功能
+// 2018年9月5日 武道塔增加等技能CD的功能
 ;(function() {
   'use strict'
   Array.prototype.baoremove = function(dx) {
@@ -277,6 +278,7 @@
   }
   var place = {
     住房: 'jh fam 0 start;go west;go west;go north;go enter',
+    '豪宅-练功房': 'jh fam 0 start;go west;go west;go north;go enter;go west',
     仓库: 'jh fam 0 start;go north;go west;store',
     '扬州城-醉仙楼': 'jh fam 0 start;go north;go north;go east',
     '扬州城-杂货铺': 'jh fam 0 start;go east;go south',
@@ -762,6 +764,7 @@
         <span class='zdy-item sell_all'>清包(T)</span>
         <span class='zdy-item zdwk'>挖矿(Y)</span>
         <span class='zdy-item auto_fj'>反击</span>
+        <span class='zdy-item go_liangong'>练功</span>
         </div>
         `
       $('.content-message').after(html)
@@ -789,6 +792,7 @@
           .substr(0, 2)
       }
       wudao_pfm = GM_getValue(role + '_wudao_pfm', wudao_pfm)
+      $('.go_liangong').on('click', WG.go_liangong)
       $('.auto_fj').on('click', WG.auto_fj)
       $('.sm_button').on('click', WG.sm_button)
       $('.go_yamen_task').on('click', WG.go_yamen_task)
@@ -1099,6 +1103,11 @@
         default:
           break
       }
+    },
+    go_liangong: function () { 
+      WG.Send('stopstate')
+      WG.go('豪宅-练功房')
+      WG.Send('lianxi dasongyangshenzhang')
     },
     auto_fj: function () {
       var t = 0
