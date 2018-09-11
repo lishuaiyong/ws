@@ -15,7 +15,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // ==/UserScript==
-// 2018年9月11日 增加反击功能
+// 2018年9月11日 增加反击功能和自动练功
 // 2018年9月5日 武道塔增加等技能CD的功能
 ;(function() {
   'use strict'
@@ -403,6 +403,7 @@
   var ks_pfm = '2000'
   var automarry = null
   var autoKsBoss = null
+  var autoIdle = 1
   var showHP = null
   var eqlist = {
     1: [],
@@ -782,6 +783,7 @@
       family = GM_getValue(role + '_family', family)
       automarry = GM_getValue(role + '_automarry', automarry)
       autoKsBoss = GM_getValue(role + '_autoKsBoss', autoKsBoss)
+      autoIdle = GM_getValue(role + '_autoIdle', autoIdle)
       showHP = GM_getValue(role + '_showHP', showHP)
       ks_pfm = GM_getValue(role + '_ks_pfm', ks_pfm)
       eqlist = GM_getValue(role + '_eqlist', eqlist)
@@ -1105,9 +1107,22 @@
       }
     },
     go_liangong: function () { 
-      WG.Send('stopstate')
-      WG.go('豪宅-练功房')
-      WG.Send('lianxi dasongyangshenzhang')
+      var t = $('.room_items .room-item:first .item-name').text()
+      t = t.indexOf('<练习')
+
+      if (t == -1) {
+        messageAppend('当前不在练功状态')
+        if (timer == 0) {
+          console.log(timer)
+          WG.Send('stopstate')
+          WG.go('豪宅-练功房')
+          WG.Send('lianxi dasongyangshenzhang')
+          timer = setInterval(WG.go_liangong, 2000)
+        }
+      } else {
+        WG.timer_close()
+      }
+      return
     },
     auto_fj: function () {
       var t = 0
@@ -1322,17 +1337,17 @@
           var isPfm = $(
             'div.combat-panel div.combat-commands span.pfm-item .shadow'
           ).is(':visible')
-          
+          var autoeq = GM_getValue(role + '_auto_eq', autoeq)
+
           // 挑战失败
           if (hp < 10) {
-            // Helper.eqhelper(autoeq)
+            Helper.eqhelper(autoeq)
             messageAppend('挑战失败，自动治疗')
             WG.is_strong = true
             $('[cmd=liaoshang]').click()
           }
           // MP不足
           if (mp < 10) {
-            // Helper.eqhelper(autoeq)
             messageAppend('MP不足，自动打坐')
             $('[cmd=dazuo]').click()
           }
@@ -1503,6 +1518,11 @@
           <option value="已开启">已开启</option>
           </select>
           </span>
+          <span><label for="auto_idle">空闲时： </label><select  style='width:80px' id = "ks_Boss">
+          <option value="1">挖矿</option>
+          <option value="2">练功</option>
+          </select>
+          </span>
           <span><label for="show_hp">全局显血： </label><select style='width:80px' id = "show_hp">
           <option value="已停止">已停止</option>
           <option value="已开启">已开启</option>
@@ -1545,6 +1565,11 @@
       $('#ks_Boss').change(function() {
         autoKsBoss = $('#ks_Boss').val()
         GM_setValue(role + '_autoKsBoss', autoKsBoss)
+      })
+      $('#auto_idle').val(autoIdle)
+      $('#auto_idle').change(function() {
+        autoIdle = $('#auto_idle').val()
+        GM_setValue(role + '_autoIdle', autoIdle)
       })
       $('#show_hp').val(showHP)
       $('#show_hp').change(function() {
@@ -1666,6 +1691,7 @@
       boss_name = data.content.match('听说([^%]+)出现在')[1]
       boss_place = data.content.match('出现在([^%]+)一带。')[1]
       var autoKsBoss = GM_getValue(role + '_autoKsBoss', autoKsBoss)
+      var autoIdle = GM_getValue(role + '_autoIdle', autoIdle)
       var ks_pfm = GM_getValue(role + '_ks_pfm', ks_pfm)
       var autoeq = GM_getValue(role + '_auto_eq', autoeq)
       console.log('boss')
@@ -1728,13 +1754,25 @@
         }
       })
       console.log(this.ksboss)
-      // 一分钟后去挖矿
-      setTimeout(() => {
-        WG.Send('relive')
-        WG.remove_hook(this.ksboss)
-        WG.zdwk()
-        next = 0
-      }, 60000)
+      if (autoIdle == 1) {
+        // 一分钟后去挖矿
+        setTimeout(() => {
+          WG.Send('relive')
+          WG.remove_hook(this.ksboss)
+          WG.zdwk()
+          next = 0
+        }, 60000)
+      }
+      if (autoIdle == 2) { 
+        // 一分钟后去练功
+        setTimeout(() => {
+          WG.Send('relive')
+          WG.remove_hook(this.ksboss)
+          WG.go_liangong()
+          next = 0
+        }, 60000)
+      }
+      
     },
 
     xiyan: function() {
@@ -1789,12 +1827,24 @@
           }
         }
       })
-      setTimeout(() => {
-        console.log('挖矿')
-        WG.remove_hook(this.marryhy)
-        WG.zdwk()
-        next = 0
-      }, 30000)
+      
+      var autoIdle = GM_getValue(role + '_autoIdle', autoIdle)
+      if (autoIdle == 1) { 
+        setTimeout(() => {
+          console.log('挖矿')
+          WG.remove_hook(this.marryhy)
+          WG.zdwk()
+          next = 0
+        }, 30000)
+      }
+      if (autoIdle == 2) { 
+        setTimeout(() => {
+          console.log('练功')
+          WG.remove_hook(this.marryhy)
+          WG.go_liangong()
+          next = 0
+        }, 30000)
+      }
     },
     showhp(id) {
       let re = ''
