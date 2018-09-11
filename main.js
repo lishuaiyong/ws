@@ -404,6 +404,7 @@
   var automarry = null
   var autoKsBoss = null
   var autoIdle = 1
+  var lianxiId = ''
   var showHP = null
   var eqlist = {
     1: [],
@@ -784,6 +785,7 @@
       automarry = GM_getValue(role + '_automarry', automarry)
       autoKsBoss = GM_getValue(role + '_autoKsBoss', autoKsBoss)
       autoIdle = GM_getValue(role + '_autoIdle', autoIdle)
+      lianxiId = GM_getValue(role + '_lianxiId', lianxiId)
       showHP = GM_getValue(role + '_showHP', showHP)
       ks_pfm = GM_getValue(role + '_ks_pfm', ks_pfm)
       eqlist = GM_getValue(role + '_eqlist', eqlist)
@@ -1109,6 +1111,7 @@
     go_liangong: function () { 
       var t = $('.room_items .room-item:first .item-name').text()
       t = t.indexOf('<练习')
+      var lianxiId = GM_getValue(role + '_lianxiId', lianxiId)
 
       if (t == -1) {
         messageAppend('当前不在练功状态')
@@ -1116,7 +1119,8 @@
           console.log(timer)
           WG.Send('stopstate')
           WG.go('豪宅-练功房')
-          WG.Send('lianxi dasongyangshenzhang')
+          WG.Send('lianxi ' + lianxiId)
+          messageAppend('开始练习' + lianxiId)
           timer = setInterval(WG.go_liangong, 2000)
         }
       } else {
@@ -1523,6 +1527,8 @@
           <option value="2">练功</option>
           </select>
           </span>
+          <span><label for="lianxi_id">技能ID： </label><input style='width:80px' type="text" id="lianxi_id" name="lianxi_id" value="">
+          </span>
           <span><label for="show_hp">全局显血： </label><select style='width:80px' id = "show_hp">
           <option value="已停止">已停止</option>
           <option value="已开启">已开启</option>
@@ -1569,6 +1575,12 @@
       $('#auto_idle').change(function() {
         autoIdle = $('#auto_idle').val()
         GM_setValue(role + '_autoIdle', autoIdle)
+      })
+      // lianxi_id
+      $('#lianxi_id').val(lianxiId)
+      $('#lianxi_id').change(function() {
+        lianxiId = $('#lianxi_id').val()
+        GM_setValue(role + '_lianxiId', lianxiId)
       })
       $('#show_hp').val(showHP)
       $('#show_hp').change(function() {
