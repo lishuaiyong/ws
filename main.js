@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         wsmud_tim
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @date         01/09/2018
 // @modified     5/09/2018
 // @description  武神传说 MUD (Tim Li)
