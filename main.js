@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         wsmud_tim
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @date         01/09/2018
 // @modified     5/09/2018
 // @description  武神传说 MUD (Tim Li)
@@ -947,7 +947,7 @@
                 id = $(npc).attr('itemid')
             }
           }
-          console.log(id)
+          // console.log(id)
           if (id != undefined) {
             WG.Send('task sm ' + id)
             WG.Send('task sm ' + id)
@@ -1108,31 +1108,22 @@
           break
       }
     },
-    go_liangong: function () { 
-      var t = $('.room_items .room-item:first .item-name').text()
-      t = t.indexOf('<练习')
-      var lianxiId = GM_getValue(role + '_lianxiId', lianxiId)
+    go_liangong: function () {
+      messageAppend('当前不在练功状态')
+      WG.Send('stopstate')
+      WG.go('豪宅-练功房')
 
-      if (t == -1) {
-        messageAppend('当前不在练功状态')
-        if (timer == 0) {
-          console.log(timer)
-          WG.Send('stopstate')
-          WG.go('豪宅-练功房')
-          WG.Send('lianxi ' + lianxiId)
-          messageAppend('开始练习' + lianxiId)
-          timer = setInterval(WG.go_liangong, 2000)
-        }
-      } else {
-        WG.timer_close()
-      }
+      Helper.eqhelper(2)
+
+      WG.Send('lianxi ' + lianxiId)
+      messageAppend('开始练习' + lianxiId)
+      WG.timer_close()
       return
     },
     auto_fj: function () {
-      var t = 0
       if (WG.fj_state >= 0) {
         WG.fj_state = -1
-        clearInterval(t)
+        WG.timer_close()
         $('.auto_fj').text('反击')
         console.log("停止反击")
       } else {
@@ -1141,7 +1132,7 @@
         console.log("获取自动出招顺序")
         console.dir(autoPfmArrary)
         $('.auto_fj').text('停止')
-        t = setInterval(function () { 
+        timer = setInterval(function () { 
           // 只有战斗状态有效
           if (WG.is_combat) { 
             autoPfmArrary.forEach(element => {
@@ -1232,19 +1223,6 @@
       for (var npc of lists) {
         WG.Send('kill ' + $(npc).attr('itemid'))
       }
-      var pfm = wudao_pfm.split(',')
-      for (var p of pfm) {
-        if (
-          $(
-            'div.combat-panel div.combat-commands span.pfm-item:eq(' +
-              p +
-              ') span'
-          ).css('left') == '0px'
-        )
-          $(
-            'div.combat-panel div.combat-commands span.pfm-item:eq(' + p + ') '
-          ).click()
-      }
     },
 
     get_all: function() {
@@ -1265,7 +1243,7 @@
       if (t == -1) {
         messageAppend('当前不在挖矿状态')
         if (timer == 0) {
-          console.log(timer)
+          // console.log(timer)
           WG.go('扬州城-矿山')
           WG.eq('铁镐')
           WG.Send('wa')
@@ -1349,15 +1327,16 @@
             messageAppend('挑战失败，自动治疗')
             WG.is_strong = true
             $('[cmd=liaoshang]').click()
+            return
           }
           // MP不足
           if (mp < 10) {
             messageAppend('MP不足，自动打坐')
             $('[cmd=dazuo]').click()
+            return
           }
-          // MP充足 停止打坐
-          if (mp > 60 && hp > 60) {
-            messageAppend('HP MP 充足，停止打坐')
+          // 停止打坐
+          if (!isBusy && !isPfm && WG.is_strong) {
             WG.Send('stopstate')
           }
           // 发起挑战
@@ -1368,6 +1347,7 @@
         } else {
           WG.Send('go up')
         }
+        return
       }
     },
     wudao_autopfm: function() {
@@ -1948,9 +1928,18 @@
     )
     KEY.init()
     WG.init()
-    WG.add_hook('items', function(data) {
+    WG.add_hook('items', function (data) {
       Helper.saveRoomstate(data)
       Helper.showallhp()
+
+      for (var npc of data.items) {
+        // console.log(npc.name)
+        if (npc.name && (npc.name.indexOf('蒙古兵') > 0 ||
+          npc.name.indexOf('十夫长') > 0)) {
+          WG.Send('kill ' + npc.id)
+          console.log('襄阳自动击杀 ' + npc.name)
+        }
+      }
     })
     WG.add_hook('sc', function(data) {
       if ('hp' in data) {
@@ -1962,9 +1951,16 @@
         Helper.showallhp()
       }
     })
-    WG.add_hook('itemadd', function(data) {
+    WG.add_hook('itemadd', function (data) {
       roomData.push(data)
       Helper.showallhp()
+
+      // console.log(data.name)
+      if (data.name && (data.name.indexOf('蒙古兵') > 0 ||
+        data.name.indexOf('十夫长') > 0)) {
+        WG.Send('kill ' + data.id)
+        console.log('襄阳自动击杀 ' + data.name)
+      }
     })
     WG.add_hook('itemremove', function(data) {
       roomData.forEach(function(v, k) {
@@ -1981,7 +1977,7 @@
       }
     })
     WG.add_hook('state', function(data) {
-      console.dir(data)
+      // console.dir(data)
     })
     WG.add_hook('dialog', function(data) {
       //console.dir(data);
@@ -2050,8 +2046,8 @@
     })
     // 进入战斗触发
     WG.add_hook('combat', function (data) { 
-      console.log("进入和或离开战斗")
-      console.dir(data)
+      // console.log("进入和或离开战斗")
+      // console.dir(data)
       if (data.start)
         WG.is_combat = true
       else
