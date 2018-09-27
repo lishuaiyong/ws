@@ -122,6 +122,33 @@
     '逍遥派-木屋': ['go south;go south;go south;go south']
   }
 
+  var store_list = [
+    "<hic>红宝石</hic>",
+    "<hic>黄宝石</hic>",
+    "<hic>蓝宝石</hic>",
+    "<hic>绿宝石</hic>",
+    "<hiy>精致的红宝石</hiy>",
+    "<hiy>精致的黄宝石</hiy>",
+    "<hiy>精致的蓝宝石</hiy>",
+    "<hiy>精致的绿宝石</hiy>",
+    "<hiz>完美的黄宝石</hiz>",
+    "<hiz>完美的黄宝石</hiz>",
+    "<hiz>完美的蓝宝石</hiz>",
+    "<hiz>完美的绿宝石</hiz>",
+    "<wht>基本内功秘籍</wht>",
+    "<wht>基本轻功秘籍</wht>",
+    "<wht>基本招架秘籍</wht>",
+    "<wht>基本剑法秘籍</wht>",
+    "<wht>基本刀法秘籍</wht>",
+    "<wht>基本拳脚秘籍</wht>",
+    "<wht>基本暗器秘籍</wht>",
+    "<wht>基本棍法秘籍</wht>",
+    "<wht>基本鞭法秘籍</wht>",
+    "<wht>基本杖法秘籍</wht>",
+    "<wht>动物皮毛</wht>",
+    "进阶残页",
+  ];
+
   var goods = {
     //扬州城-醉仙楼-店小二
     米饭: {
@@ -397,6 +424,10 @@
     '襄阳城-广场': 'jh fam 7 start',
     武道塔: 'jh fam 8 start'
   }
+
+  var drop_list = [];
+  var fenjie_list = [];
+  
   var role
   var family = null
   var wudao_pfm = '1'
@@ -748,6 +779,19 @@
         WG.login()
       })
     },
+    inArray: function (val, arr) {
+      for (let i = 0; i < arr.length; i++) {
+        let item = arr[i];
+        if (item[0] == "<") {
+          if (item == val) return true;
+
+        }
+        else {
+          if (val.indexOf(item) >= 0) return true;
+        }
+      }
+      return false;
+    },
     login: function() {
       role = $('.role-list .select')
         .text()
@@ -907,7 +951,7 @@
     },
     Send: function(cmd) {
       if (cmd) {
-        cmd = cmd.split(';')
+        cmd = cmd instanceof Array ? cmd : cmd.split(';');
         for (var c of cmd) {
           $("span[WG='WG']")
             .attr('cmd', c)
@@ -1180,7 +1224,7 @@
       else WG.updete_npc_id()
     },
 
-    go_yamen_task: function() {
+    go_yamen_task: function () {
       WG.go('扬州城-衙门正厅')
       WG.ask('扬州知府 程药发', 1)
 
@@ -1231,10 +1275,99 @@
         WG.Send('get all from ' + $(npc).attr('itemid'))
       }
     },
+    packup_listener:null,
+    sell_all: function () {
+      if (WG.packup_listener) {
+        messageAppend("<hio>包裹整理</hio>运行中");
+        return;
+      }
+      let stores = [];
+      WG.packup_listener = WG.add_hook(["dialog", "text"], (data) => {
+        if (data.type == "dialog" && data.dialog == "list") {
+          if (data.stores == undefined) {
+            return;
+          }
+          stores = [];
+          //去重
+          for (let i = 0; i < data.stores.length; i++) {
+            let s = null;
+            for (let j = 0; j < stores.length; j++) {
+              if (stores[j].name == data.stores[i].name) {
+                s = stores[j]; break;
+              }
+            }
+            if (s != null) {
+              s.count += data.stores[i].count;
+            }
+            else {
+              stores.push(data.stores[i]);
+            }
+          }
 
-    sell_all: function() {
-      WG.go('扬州城-打铁铺')
-      WG.Send('sell all')
+        } else if (data.type == "dialog" && data.dialog == "pack") {
+          let cmds = [];
+          for (var i = 0; i < data.items.length; i++) {
+            //仓库
+            if (WG.inArray(data.items[i].name, store_list)) {
+              if (data.items[i].can_eq) {
+                //装备物品，不能叠加，计算总数
+                let store = null;
+                for (let j = 0; j < stores.length; j++) {
+                  if (stores[j].name == data.items[i].name) {
+                    store = stores[j]; break;
+                  }
+                }
+                if (store != null) {
+                  if (store.count < 4) {
+                    store.count += data.items[i].count;
+                    cmds.push("store " + data.items[i].count + " " + data.items[i].id);
+                    messageAppend("<hio>包裹整理</hio>" + data.items[i].name + "储存到仓库");
+                  }
+                  else {
+                    messageAppend("<hio>包裹整理</hio>" + data.items[i].name + "超过设置的储存上限");
+                  }
+                }
+                else {
+                  stores.push(data.items[i]);
+                  cmds.push("store " + data.items[i].count + " " + data.items[i].id);
+                  messageAppend("<hio>包裹整理</hio>" + data.items[i].name + "储存到仓库");
+                }
+              }
+              else {
+                cmds.push("store " + data.items[i].count + " " + data.items[i].id);
+                messageAppend("<hio>包裹整理</hio>" + data.items[i].name + "储存到仓库");
+              }
+            }
+            //丢弃
+            if (WG.inArray(data.items[i].name, drop_list)) {
+              cmds.push("drop " + data.items[i].count + " " + data.items[i].id);
+              messageAppend("<hio>包裹整理</hio>" + data.items[i].name + "丢弃");
+
+            }
+            //分解
+            if (WG.inArray(data.items[i].name, fenjie_list)) {
+              cmds.push("fenjie " + data.items[i].id);
+              messageAppend("<hio>包裹整理</hio>" + data.items[i].name + "分解");
+
+            }
+          }
+          if (cmds.length > 0) {
+            WG.Send(cmds);
+          }
+          WG.go("扬州城-杂货铺");
+          WG.Send("sell all");
+          WG.Send("look3 1");
+        }
+        else if (data.type == 'text' && data.msg == '没有这个玩家。') {
+          messageAppend("<hio>包裹整理</hio>完成");
+          WG.remove_hook(WG.packup_listener);
+          WG.packup_listener = undefined;
+        }
+      });
+
+      messageAppend("<hio>包裹整理</hio>开始");
+      WG.go("仓库");
+      WG.Send("store;pack");
     },
     zdwk: function() {
       var t = $('.room_items .room-item:first .item-name').text()
@@ -1336,7 +1469,7 @@
             return
           }
           // 停止打坐
-          if (!isBusy && !isPfm && WG.is_strong) {
+          if (!isPfm && WG.is_strong) {
             WG.Send('stopstate')
           }
           // 发起挑战
@@ -1935,7 +2068,8 @@
       for (var npc of data.items) {
         // console.log(npc.name)
         if (npc.name && (npc.name.indexOf('蒙古兵') > 0 ||
-          npc.name.indexOf('十夫长') > 0)) {
+          npc.name.indexOf('十夫长') > 0 ||
+          npc.name.indexOf('百夫长') > 0)) {
           WG.Send('kill ' + npc.id)
           console.log('襄阳自动击杀 ' + npc.name)
         }
@@ -1957,7 +2091,8 @@
 
       // console.log(data.name)
       if (data.name && (data.name.indexOf('蒙古兵') > 0 ||
-        data.name.indexOf('十夫长') > 0)) {
+        data.name.indexOf('十夫长') > 0 || 
+        data.name.indexOf('百夫长') > 0)) {
         WG.Send('kill ' + data.id)
         console.log('襄阳自动击杀 ' + data.name)
       }
