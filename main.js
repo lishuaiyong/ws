@@ -317,6 +317,8 @@
     '扬州城-擂台': 'jh fam 0 start;go west;go south',
     '扬州城-当铺': 'jh fam 0 start;go south;go east',
     '扬州城-帮派': 'jh fam 0 start;go south;go south;go east',
+    "扬州城-扬州武馆": "jh fam 0 start;go south;go south;go west",
+    "扬州城-武庙": "jh fam 0 start;go north;go north;go west",
     '武当派-广场': 'jh fam 1 start;',
     '武当派-三清殿': 'jh fam 1 start;go north',
     '武当派-石阶': 'jh fam 1 start;go west',
@@ -436,6 +438,7 @@
   var autoKsBoss = null
   var autoIdle = 1
   var lianxiId = ''
+  var kongzhiId = ''
   var showHP = null
   var eqlist = {
     1: [],
@@ -811,6 +814,9 @@
         <span class='zdy-item zdwk'>挖矿(Y)</span>
         <span class='zdy-item auto_fj'>反击</span>
         <span class='zdy-item go_liangong'>练功</span>
+        <span class='zdy-item go_wumiao'>武庙</span>
+        <span class='zdy-item go_wudao'>武道</span>
+        </div>
         </div>
         `
       $('.content-message').after(html)
@@ -830,6 +836,8 @@
       autoKsBoss = GM_getValue(role + '_autoKsBoss', autoKsBoss)
       autoIdle = GM_getValue(role + '_autoIdle', autoIdle)
       lianxiId = GM_getValue(role + '_lianxiId', lianxiId)
+      kongzhiId = GM_getValue(role + '_kongzhiId', kongzhiId)
+      showHP = GM_getValue(role + '_showHP', showHP)
       showHP = GM_getValue(role + '_showHP', showHP)
       ks_pfm = GM_getValue(role + '_ks_pfm', ks_pfm)
       eqlist = GM_getValue(role + '_eqlist', eqlist)
@@ -841,6 +849,8 @@
       }
       wudao_pfm = GM_getValue(role + '_wudao_pfm', wudao_pfm)
       $('.go_liangong').on('click', WG.go_liangong)
+      $('.go_wumiao').on('click', WG.go_wumiao)
+      $('.go_wudao').on('click', WG.go_wudao)
       $('.auto_fj').on('click', WG.auto_fj)
       $('.sm_button').on('click', WG.sm_button)
       $('.go_yamen_task').on('click', WG.go_yamen_task)
@@ -1164,6 +1174,18 @@
       WG.timer_close()
       return
     },
+    go_wumiao: function () {
+      WG.go("扬州城-武庙");
+      WG.Send("liaoshang");
+    },
+    go_wudao: function () {
+      WG.go('武道塔')
+      WG.Send('go enter')
+      setTimeout(function () {
+        var w = $('.room_items .room-item:last')
+        WG.Send('kill ' + w.attr('itemid'))
+      }, 2000)
+    },
     auto_fj: function () {
       if (WG.fj_state >= 0) {
         WG.fj_state = -1
@@ -1453,7 +1475,13 @@
             'div.combat-panel div.combat-commands span.pfm-item .shadow'
           ).is(':visible')
           var autoeq = GM_getValue(role + '_auto_eq', autoeq)
-
+          
+          // 如果设置了控制技能
+          if (kongzhiId) { 
+            isPfm = $(
+              'div.combat-panel div.combat-commands span.pfm-item[pid="'+kongzhiId+'"] .shadow'
+            ).is(':visible')
+          }
           // 挑战失败
           if (hp < 10) {
             Helper.eqhelper(autoeq)
@@ -1642,6 +1670,8 @@
           </span>
           <span><label for="lianxi_id">技能ID： </label><input style='width:80px' type="text" id="lianxi_id" name="lianxi_id" value="">
           </span>
+          <span><label for="kongzhi_id">控制技能ID： </label><input style='width:80px' type="text" id="kongzhi_id" name="kongzhi_id" value="">
+          </span>
           <span><label for="show_hp">全局显血： </label><select style='width:80px' id = "show_hp">
           <option value="已停止">已停止</option>
           <option value="已开启">已开启</option>
@@ -1695,6 +1725,13 @@
         lianxiId = $('#lianxi_id').val()
         GM_setValue(role + '_lianxiId', lianxiId)
       })
+      // kongzhi_id
+      $('#kongzhi_id').val(kongzhiId)
+      $('#kongzhi_id').change(function() {
+        kongzhiId = $('#kongzhi_id').val()
+        GM_setValue(role + '_kongzhiId', kongzhiId)
+      })
+
       $('#show_hp').val(showHP)
       $('#show_hp').change(function() {
         showHP = $('#show_hp').val()
