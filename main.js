@@ -1175,6 +1175,7 @@
       return
     },
     go_wumiao: function () {
+      Helper.eqhelper(1)
       WG.go("扬州城-武庙");
       WG.Send("liaoshang");
     },
