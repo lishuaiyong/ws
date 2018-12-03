@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         wsmud_tim
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @date         01/09/2018
 // @modified     5/09/2018
 // @description  武神传说 MUD (Tim Li)
@@ -104,6 +104,8 @@
   var zb_place
   var next = 0
   var roomData = []
+  var blacklist = ['张无忌', '天山童姥', '枯荣大师'];
+  
   var needfind = {
     '武当派-林间小径': ['go south'],
     '峨眉派-走廊': [
@@ -147,6 +149,10 @@
     "<wht>基本杖法秘籍</wht>",
     "<wht>动物皮毛</wht>",
     "进阶残页",
+    "移花接木残页",
+    "明玉功残页",
+    "中平枪法残页",
+    "蒙古骑枪残页",
   ];
 
   var goods = {
@@ -395,6 +401,7 @@
       'jh fam 3 start;go westup;go south;go southup;go southup;break bi;go enter;go westup',
     '华山派-落雁峰':
       'jh fam 3 start;go westup;go south;go southup;go southup;break bi;go enter;go westup;go westup',
+    "华山派-华山绝顶": "jh fam 3 start;go westup;go south;go southup;go southup;break bi;go enter;go westup;go westup;jumpup",
     '峨眉派-金顶': 'jh fam 4 start',
     '峨眉派-庙门': 'jh fam 4 start;go west',
     '峨眉派-广场': 'jh fam 4 start;go west;go south',
@@ -427,8 +434,45 @@
     武道塔: 'jh fam 8 start'
   }
 
-  var drop_list = [];
-  var fenjie_list = [];
+  var drop_list = [
+    "火折子",
+    "绝情掌残页",
+    "移风剑法残页",
+    "冷月神功残页",
+    "身空行残页",
+    "嵩山剑法残页",
+    "云龙剑残页",
+    "白云心法残页",
+    "唐诗剑法残页",
+    "金雁功残页",
+    "云龙鞭法残页",
+    "绝门棍残页",
+    "猴拳残页",
+    "密宗大手印残页",
+    "云龙身法残页",
+    "摧心掌残页",
+    "神剑诀残页",
+    "云龙心法残页",
+    "意形步法残页",
+    "天羽奇剑残页",
+    "踏歌行残页",
+    "金蛇游身掌残页",
+    "神龙剑残页",
+  ];
+  var fenjie_list = [
+    "移花宫履",
+    "邀月的手镯",
+    "移花宫装",
+    "大宋军帽",
+    "大宋军靴",
+    "大宋军服",
+    "大宋军枪",
+    "蒙古枪",
+    "笠子帽",
+    "蒙古军帽",
+    "蒙古军靴",
+    "蒙古军服",
+  ];
   
   var role
   var family = null
@@ -777,6 +821,7 @@
     sm_item: null,
     fj_state: -1,
     is_combat: false,
+    autoPfmArrary: [],
     init: function() {
       $('li[command=SelectRole]').on('click', function() {
         WG.login()
@@ -883,6 +928,8 @@
         KEY.do_command('pack')
         KEY.do_command('pack')
         KEY.do_command('showcombat')
+        WG.autoPfmArrary = Helper.getAutoPfm()
+        console.dir(WG.autoPfmArrary)
       }, 1000)
     },
     updete_goods_id: function() {
@@ -983,183 +1030,95 @@
       var w = $('.room-name').html()
       return w.indexOf(p) == -1 ? false : true
     },
-    sm: function() {
+    smhook: undefined,
+    sm: function () {
+      if (!WG.smhook) {
+        WG.smhook = WG.add_hook('text', function (data) {
+          if (data.msg.indexOf("辛苦了， 你先去休息") >= 0 ||
+            data.msg.indexOf("和本门毫无瓜葛") >= 0 ||
+            data.msg.indexOf("你没有") >= 0
+          ) {
+            WG.Send("taskover signin");
+            WG.sm_state = -1;
+            $(".sm_button").text("师门(Q)");
+            WG.smhook = null;
+            WG.remove_hook(WG.smhook);
+          }
+        });
+      }
       switch (WG.sm_state) {
         case 0:
           //前往师门接收任务
-          WG.go(sm_array[family].place)
-          WG.sm_state = 1
-          setTimeout(WG.sm, 700)
-          break
+          WG.go(sm_array[family].place);
+          WG.sm_state = 1;
+          setTimeout(WG.sm, 700);
+          break;
         case 1:
           //接受任务
-          var lists = $('.room_items .room-item')
-          var id = null
+          var lists = $(".room_items .room-item");
+          var id = null;
           for (var npc of lists) {
             if (npc.lastElementChild.lastElementChild == null) {
               if (npc.lastElementChild.innerText == sm_array[family].npc)
-                id = $(npc).attr('itemid')
+                id = $(npc).attr("itemid");
             }
           }
-          // console.log(id)
+          console.log(id);
           if (id != undefined) {
-            WG.Send('task sm ' + id)
-            WG.Send('task sm ' + id)
-            WG.sm_state = 2
+            WG.Send("task sm " + id);
+            WG.Send("task sm " + id);
+            WG.sm_state = 2;
           } else {
-            WG.updete_npc_id()
+            WG.updete_npc_id();
           }
-          setTimeout(WG.sm, 300)
-          break
+          setTimeout(WG.sm, 300);
+          break;
         case 2:
+          // var mysm_loser = GM_getValue(role + "_sm_loser", sm_loser);
           //获取师门任务物品
-          var item = $("span[cmd$='giveup']:last")
-            .parent()
-            .prev()
+          var item = $("span[cmd$='giveup']:last").parent().prev();
           if (item.length == 0) {
-            WG.sm_state = 0
-            setTimeout(WG.sm, 1000)
-            return
-          }
-          item = item.html()
+            WG.sm_state = 0;
+            setTimeout(WG.sm, 1000);
+            return;
+          };
+          var itemName = item.html();
+          item = item[0].outerHTML;
           //(逗比写法)
           //能上交直接上交
-          if (
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .children()
-              .html() == item
-          ) {
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .click()
-            messageAppend('自动上交' + item)
-            WG.sm_state = 0
-            setTimeout(WG.sm, 100)
-            return
-          }
-          if (
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .children()
-              .html() == item
-          ) {
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .click()
-            messageAppend('自动上交' + item)
-            WG.sm_state = 0
-            setTimeout(WG.sm, 100)
-            return
-          }
-          if (
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .children()
-              .html() == item
-          ) {
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .click()
-            messageAppend('自动上交' + item)
-            WG.sm_state = 0
-            setTimeout(WG.sm, 100)
-            return
-          }
-          if (
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .children()
-              .html() == item
-          ) {
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .click()
-            messageAppend('自动上交' + item)
-            WG.sm_state = 0
-            setTimeout(WG.sm, 100)
-            return
-          }
-          if (
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .children()
-              .html() == item
-          ) {
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .click()
-            messageAppend('自动上交' + item)
-            WG.sm_state = 0
-            setTimeout(WG.sm, 100)
-            return
-          }
-          if (
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .children()
-              .html() == item
-          ) {
-            $("span[cmd$='giveup']:last")
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .prev()
-              .click()
-            messageAppend('自动上交' + item)
-            WG.sm_state = 0
-            setTimeout(WG.sm, 100)
-            return
+          var tmpObj = $("span[cmd$='giveup']:last").prev();
+          for (let i = 0; i < 6; i++) {
+            if (tmpObj.children().html()) {
+              if (tmpObj.html().indexOf(item) >= 0) {
+                tmpObj.click();
+                messageAppend("自动上交" + item);
+                WG.sm_state = 0;
+                setTimeout(WG.sm, 100);
+                return;
+              }
+              tmpObj = tmpObj.prev();
+            }
           }
           //不能上交自动购买
-          WG.sm_item = goods[item]
+          WG.sm_item = goods[itemName];
           if (WG.sm_item != undefined) {
-            WG.go(WG.sm_item.place)
-            messageAppend('自动购买' + item)
-            WG.sm_state = 3
-            setTimeout(WG.sm, 1000)
+            WG.go(WG.sm_item.place);
+            messageAppend("自动购买" + item);
+            WG.sm_state = 3;
+            setTimeout(WG.sm, 1000);
           } else {
-            messageAppend('无法购买' + item)
-            WG.sm_state = -1
-            $('.sm_button').text('师门(Q)')
+            messageAppend("无法购买" + item);
           }
-          break
+          break;
         case 3:
-          WG.go(WG.sm_item.place)
+          WG.go(WG.sm_item.place);
           if (WG.buy(WG.sm_item)) {
-            WG.sm_state = 0
+            WG.sm_state = 0;
           }
-          setTimeout(WG.sm, 1000)
-          break
+          setTimeout(WG.sm, 1000);
+          break;
         default:
-          break
+          break;
       }
     },
     go_liangong: function () {
@@ -1169,8 +1128,33 @@
 
       Helper.eqhelper(2)
 
-      WG.Send('lianxi ' + lianxiId)
-      messageAppend('开始练习' + lianxiId)
+      if (lianxiId) {
+        WG.Send('lianxi ' + lianxiId)
+        messageAppend('开始练习' + lianxiId)
+      }
+      else { 
+        KEY.do_command('skills')
+        setTimeout(function () {
+          var maxLevel = $(".obj-money hic").text();
+          // 基础技能
+          $(".skill-item.base,.skill.enable").each(function (i, n) {
+            var $level = $(n).find(".skill-level");
+            var skid = $(n).attr("skid")
+            var s = $level.text()
+            var level = s.substring(0, s.indexOf("级"))
+            if (parseInt(level) < parseInt(maxLevel) && skid != "literate" && skid != "lianyao") {
+              lianxiId = skid
+              messageAppend('随机练习' + lianxiId)
+              return false
+            }
+          })
+
+          WG.Send('lianxi ' + lianxiId)
+        }, 1000)
+
+        KEY.dialog_close()
+      }
+     
       WG.timer_close()
       return
     },
@@ -1195,14 +1179,11 @@
         console.log("停止反击")
       } else {
         WG.fj_state = 0
-        var autoPfmArrary = Helper.getAutoPfm()
-        console.log("获取自动出招顺序")
-        console.dir(autoPfmArrary)
         $('.auto_fj').text('停止')
         timer = setInterval(function () { 
           // 只有战斗状态有效
           if (WG.is_combat) { 
-            autoPfmArrary.forEach(element => {
+            WG.autoPfmArrary.forEach(element => {
               $(".pfm-item[pid='"+element+"']:has(.shadow:hidden)").click()
             });
           }
@@ -1290,6 +1271,9 @@
       for (var npc of lists) {
         WG.Send('kill ' + $(npc).attr('itemid'))
       }
+      WG.autoPfmArrary.forEach(element => {
+        $(".pfm-item[pid='"+element+"']:has(.shadow:hidden)").click()
+      });
     },
 
     get_all: function() {
@@ -1850,6 +1834,11 @@
       if (boss_name == null || boss_place == null) {
         return
       }
+      if (WG.inArray(boss_name, blacklist)) {
+        messageAppend("黑名单boss,忽略!");
+        return;
+      }
+      
       boss_name = data.content.match('听说([^%]+)出现在')[1]
       boss_place = data.content.match('出现在([^%]+)一带。')[1]
       var autoKsBoss = GM_getValue(role + '_autoKsBoss', autoKsBoss)
@@ -2102,12 +2091,18 @@
     WG.add_hook('items', function (data) {
       Helper.saveRoomstate(data)
       Helper.showallhp()
+      var isBusy = $('[command=stopstate]').is(':visible')
 
       for (var npc of data.items) {
         // console.log(npc.name)
         if (npc.name && (npc.name.indexOf('蒙古兵') > 0 ||
           npc.name.indexOf('十夫长') > 0 ||
-          npc.name.indexOf('百夫长') > 0)) {
+          npc.name.indexOf('百夫长') > 0 ||
+          npc.name.indexOf('千夫长') > 0)) {
+          // 停止打坐
+          if (isBusy) {
+            WG.Send('stopstate')
+          }
           WG.Send('kill ' + npc.id)
           console.log('襄阳自动击杀 ' + npc.name)
         }
@@ -2126,11 +2121,17 @@
     WG.add_hook('itemadd', function (data) {
       roomData.push(data)
       Helper.showallhp()
+      var isBusy = $('[command=stopstate]').is(':visible')
 
       // console.log(data.name)
       if (data.name && (data.name.indexOf('蒙古兵') > 0 ||
         data.name.indexOf('十夫长') > 0 || 
-        data.name.indexOf('百夫长') > 0)) {
+        data.name.indexOf('百夫长') > 0 ||
+        data.name.indexOf('千夫长') > 0)) {
+        // 停止打坐
+        if (isBusy) {
+          WG.Send('stopstate')
+        }
         WG.Send('kill ' + data.id)
         console.log('襄阳自动击杀 ' + data.name)
       }
